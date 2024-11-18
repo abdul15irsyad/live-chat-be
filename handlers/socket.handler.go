@@ -36,7 +36,7 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 		BroadcastMessage(&Message{
 			Type:    "badge",
 			Content: clients[conn].Name + " left",
-		}, conn, true)
+		}, conn)
 		return nil
 	})
 	clients[conn] = Client{
@@ -47,7 +47,7 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 	BroadcastMessage(&Message{
 		Type:    "badge",
 		Content: clients[conn].Name + " joined",
-	}, conn, false)
+	}, conn)
 
 	for {
 		message := Message{}
@@ -56,13 +56,13 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 			break
 		}
 		fmt.Println(clients[conn].Name+" send: ", message.Content)
-		BroadcastMessage(&message, conn, true)
+		BroadcastMessage(&message, conn)
 	}
 }
 
-func BroadcastMessage(message *Message, conn *websocket.Conn, isExcludeSender bool) {
+func BroadcastMessage(message *Message, conn *websocket.Conn) {
 	for client := range clients {
-		if client == conn && isExcludeSender {
+		if client == conn {
 			continue
 		}
 		if err := client.WriteJSON(*message); err != nil {
