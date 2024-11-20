@@ -1,15 +1,24 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 )
 
-type Message struct {
-	Type    string `json:"type"`
-	Content string `json:"content"`
+type Payload[T any] struct {
+	Type string `json:"type"`
+	Data T      `json:"data"`
+}
+
+type MessageData struct {
+	Message string `json:"message"`
+}
+
+type JoinData struct {
+	Name string `json:"name"`
 }
 
 type Client struct {
@@ -33,9 +42,11 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 	queryParams := request.URL.Query()
 	name := queryParams.Get("name")
 	conn.SetCloseHandler(func(code int, text string) error {
-		BroadcastMessage(&Message{
-			Type:    "badge",
-			Content: clients[conn].Name + " left",
+		BroadcastMessage(&Payload[JoinData]{
+			Type: "left",
+			Data: JoinData{
+				Name: clients[conn].Name,
+			},
 		}, conn)
 		return nil
 	})
@@ -44,23 +55,33 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	fmt.Printf("%s connected\n", clients[conn].Name)
-	BroadcastMessage(&Message{
-		Type:    "badge",
-		Content: clients[conn].Name + " joined",
+	BroadcastMessage(&Payload[JoinData]{
+		Type: "joined",
+		Data: JoinData{
+			Name: clients[conn].Name,
+		},
 	}, conn)
 
 	for {
-		message := Message{}
-		if err := conn.ReadJSON(&message); err != nil {
+		var JSONMessage map[string]any
+		if err := conn.ReadJSON(&JSONMessage); err != nil {
 			fmt.Println(err)
 			break
 		}
-		fmt.Println(clients[conn].Name+" send: ", message.Content)
-		BroadcastMessage(&message, conn)
+		switch JSONMessage["type"] {
+		case "message":
+			jsonData, _ := json.Marshal(JSONMessage)
+			var message Payload[MessageData]
+			_ = json.Unmarshal(jsonData, &message)
+			fmt.Printf("%s send: %s\n", clients[conn].Name, message.Data.Message)
+			BroadcastMessage(&message, conn)
+		default:
+			fmt.Printf("type %s not found\n", JSONMessage["type"])
+		}
 	}
 }
 
-func BroadcastMessage(message *Message, conn *websocket.Conn) {
+func BroadcastMessage[T any](message *Payload[T], conn *websocket.Conn) {
 	for client := range clients {
 		if client == conn {
 			continue
