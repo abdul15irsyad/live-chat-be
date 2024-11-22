@@ -17,7 +17,7 @@ type MessageData struct {
 	Message string `json:"message"`
 }
 
-type JoinData struct {
+type JoinLeftData struct {
 	Name string `json:"name"`
 }
 
@@ -42,9 +42,9 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 	queryParams := request.URL.Query()
 	name := queryParams.Get("name")
 	conn.SetCloseHandler(func(code int, text string) error {
-		BroadcastMessage(&Payload[JoinData]{
+		BroadcastMessage(&Payload[JoinLeftData]{
 			Type: "left",
-			Data: JoinData{
+			Data: JoinLeftData{
 				Name: clients[conn].Name,
 			},
 		}, conn)
@@ -55,9 +55,9 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	fmt.Printf("%s connected\n", clients[conn].Name)
-	BroadcastMessage(&Payload[JoinData]{
+	BroadcastMessage(&Payload[JoinLeftData]{
 		Type: "joined",
-		Data: JoinData{
+		Data: JoinLeftData{
 			Name: clients[conn].Name,
 		},
 	}, conn)
@@ -75,8 +75,14 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 			_ = json.Unmarshal(jsonData, &message)
 			fmt.Printf("%s send: %s\n", clients[conn].Name, message.Data.Message)
 			BroadcastMessage(&message, conn)
+		case "joined", "left":
+			jsonData, _ := json.Marshal(JSONMessage)
+			var message Payload[JoinLeftData]
+			_ = json.Unmarshal(jsonData, &message)
+			fmt.Printf("%s %s\n", clients[conn].Name, message.Type)
+			BroadcastMessage(&message, conn)
 		default:
-			fmt.Printf("type %s not found\n", JSONMessage["type"])
+			fmt.Printf("type \"%s\" not found\n", JSONMessage["type"])
 		}
 	}
 }
