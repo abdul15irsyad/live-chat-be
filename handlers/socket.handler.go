@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"live-chat-be/services"
+	"live-chat-be/types"
 	"net/http"
 	"time"
 
@@ -10,26 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Payload[T any] struct {
-	Type     string    `json:"type"`
-	Data     T         `json:"data"`
-	Datetime time.Time `json:"datetime"`
-}
-
-type MessageData struct {
-	Message string `json:"message"`
-}
-
-type JoinLeftData struct {
-	Name string `json:"name"`
-}
-
-type Client struct {
-	Id   uuid.UUID
-	Name string
-}
-
-var clients = map[*websocket.Conn]Client{}
+var clients = map[*websocket.Conn]types.Client{}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -45,29 +28,28 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 	// get name
 	queryParams := request.URL.Query()
 	name := queryParams.Get("name")
+	currentTime := time.Now()
 	conn.SetCloseHandler(func(code int, text string) error {
-		BroadcastMessage(&Payload[JoinLeftData]{
-			Type: "left",
-			Data: JoinLeftData{
-				Name: clients[conn].Name,
-			},
-			Datetime: time.Now(),
-		}, conn)
+		currentTime = time.Now()
+		fmt.Printf("%s: %s disconnected\n", currentTime.Format("2006-01-02 15:04:05"), clients[conn].Name)
+		services.BroadcastMessage(&types.Payload[types.Client]{
+			Type:      "left",
+			Data:      clients[conn],
+			Timestamp: currentTime,
+		}, conn, &clients)
 		return nil
 	})
-	clients[conn] = Client{
+	clients[conn] = types.Client{
 		Id:   uuid.New(),
 		Name: name,
 	}
 
-	fmt.Printf("%s connected\n", clients[conn].Name)
-	BroadcastMessage(&Payload[JoinLeftData]{
-		Type: "joined",
-		Data: JoinLeftData{
-			Name: clients[conn].Name,
-		},
-		Datetime: time.Now(),
-	}, conn)
+	fmt.Printf("%s: %s connected\n", currentTime.Format("2006-01-02 15:04:05"), clients[conn].Name)
+	services.BroadcastMessage(&types.Payload[types.Client]{
+		Type:      "joined",
+		Data:      clients[conn],
+		Timestamp: currentTime,
+	}, conn, &clients)
 
 	for {
 		var JSONMessage map[string]any
@@ -78,30 +60,13 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 		switch JSONMessage["type"] {
 		case "message":
 			jsonData, _ := json.Marshal(JSONMessage)
-			var message Payload[MessageData]
+			var message types.Payload[types.MessageData]
 			_ = json.Unmarshal(jsonData, &message)
-			fmt.Printf("%s send: %s\n", clients[conn].Name, message.Data.Message)
-			BroadcastMessage(&message, conn)
-		case "joined", "left":
-			jsonData, _ := json.Marshal(JSONMessage)
-			var message Payload[JoinLeftData]
-			_ = json.Unmarshal(jsonData, &message)
-			fmt.Printf("%s %s\n", clients[conn].Name, message.Type)
-			BroadcastMessage(&message, conn)
+			message.Timestamp = time.Now()
+			fmt.Printf("%s: %s send \"%s\"\n", message.Timestamp.Format("2006-01-02 15:04:05"), clients[conn].Name, message.Data.Message)
+			services.BroadcastMessage(&message, conn, &clients)
 		default:
 			fmt.Printf("type \"%s\" not found\n", JSONMessage["type"])
-		}
-	}
-}
-
-func BroadcastMessage[T any](message *Payload[T], conn *websocket.Conn) {
-	for client := range clients {
-		if client == conn {
-			continue
-		}
-		if err := client.WriteJSON(*message); err != nil {
-			fmt.Println(err)
-			continue
 		}
 	}
 }
