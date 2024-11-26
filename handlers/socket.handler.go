@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 type Payload[T any] struct {
-	Type string `json:"type"`
-	Data T      `json:"data"`
+	Type     string    `json:"type"`
+	Data     T         `json:"data"`
+	Datetime time.Time `json:"datetime"`
 }
 
 type MessageData struct {
@@ -22,6 +25,7 @@ type JoinData struct {
 }
 
 type Client struct {
+	Id   uuid.UUID
 	Name string
 }
 
@@ -47,10 +51,12 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 			Data: JoinData{
 				Name: clients[conn].Name,
 			},
+			Datetime: time.Now(),
 		}, conn)
 		return nil
 	})
 	clients[conn] = Client{
+		Id:   uuid.New(),
 		Name: name,
 	}
 
@@ -60,6 +66,7 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 		Data: JoinData{
 			Name: clients[conn].Name,
 		},
+		Datetime: time.Now(),
 	}, conn)
 
 	for {
