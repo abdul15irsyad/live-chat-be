@@ -8,7 +8,7 @@ import (
 )
 
 func BroadcastMessage[T any](message *types.Payload[T], conn *websocket.Conn, clients *map[*websocket.Conn]types.Client) {
-	for client, _ := range *clients {
+	for client := range *clients {
 		if client == conn {
 			continue
 		}
