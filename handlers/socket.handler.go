@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"live-chat-be/services"
 	"live-chat-be/types"
+	"live-chat-be/utils"
 	"net/http"
 	"time"
 
@@ -20,14 +21,34 @@ var upgrader = websocket.Upgrader{
 }
 
 func SocketHandler(writer http.ResponseWriter, request *http.Request) {
+	// get name
+	queryParams := request.URL.Query()
+	name := queryParams.Get("name")
+
+	if utils.Includes(utils.MapSlice(utils.Values(clients), func(client types.Client) string {
+		return client.Name
+	}), name) {
+		writer.WriteHeader(http.StatusBadRequest)
+		writer.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(writer).Encode(map[string]any{
+			"message": "Bad Request",
+			"code":    "VALIDATION_ERROR",
+			"errors": []map[string]any{
+				{
+					"field":   "name",
+					"message": "name already exist",
+				},
+			},
+		})
+		return
+	}
+
 	conn, err := upgrader.Upgrade(writer, request, nil)
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
-	// get name
-	queryParams := request.URL.Query()
-	name := queryParams.Get("name")
+
 	currentTime := time.Now()
 	conn.SetCloseHandler(func(code int, text string) error {
 		currentTime = time.Now()
