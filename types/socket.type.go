@@ -8,6 +8,7 @@ import (
 
 type Payload[T any] struct {
 	Type      string    `json:"type"`
+	Client    Client    `json:"client"`
 	Data      T         `json:"data"`
 	Timestamp time.Time `json:"timestamp"`
 }

@@ -16,6 +16,9 @@ import (
 var clients = map[*websocket.Conn]types.Client{}
 
 var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
@@ -84,6 +87,7 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 			var message types.Payload[types.MessageData]
 			_ = json.Unmarshal(jsonData, &message)
 			message.Timestamp = time.Now()
+			message.Client = clients[conn]
 			fmt.Printf("%s: %s send \"%s\"\n", message.Timestamp.Format("2006-01-02 15:04:05"), clients[conn].Name, message.Data.Message)
 			services.BroadcastMessage(&message, conn, &clients)
 		default:
