@@ -13,6 +13,7 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		panic(err)
 	}
+	http.HandleFunc("/register", handlers.RegisterHandler)
 	http.HandleFunc("/ws", handlers.SocketHandler)
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -27,14 +27,6 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 	queryParams := request.URL.Query()
 	name := queryParams.Get("name")
 
-	// if utils.Includes(utils.MapSlice(utils.Values(clients), func(client types.Client) string {
-	// 	return client.Name
-	// }), name) {
-	// 	fmt.Printf("name %s already exist\n", name)
-	// 	http.Error(writer, "Name already exist", http.StatusBadRequest)
-	// 	return
-	// }
-
 	conn, err := upgrader.Upgrade(writer, request, nil)
 	if err != nil {
 		panic(err)
