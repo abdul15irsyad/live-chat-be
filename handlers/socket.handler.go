@@ -42,6 +42,8 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 			Data:      clients[conn],
 			Timestamp: currentTime,
 		}, conn, &clients)
+		conn.Close()
+		delete(clients, conn)
 		return nil
 	})
 	clients[conn] = types.Client{

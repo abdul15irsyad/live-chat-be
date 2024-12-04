@@ -7,13 +7,9 @@ import (
 	"net/http"
 )
 
-type RequestData struct {
-	Name string `json:"name"`
-}
-
-func RegisterHandler(writer http.ResponseWriter, request *http.Request) {
+func GetAllClientHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
-	if request.Method != http.MethodPost {
+	if request.Method != http.MethodGet {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
 		json.NewEncoder(writer).Encode(map[string]any{
 			"message": "Method Not Allowed",
@@ -21,33 +17,15 @@ func RegisterHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	var data RequestData
-	decoder := json.NewDecoder(request.Body)
-	if err := decoder.Decode(&data); err != nil {
-		http.Error(writer, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-	defer request.Body.Close()
-
-	if utils.Includes(utils.MapSlice(utils.Values(clients), func(client types.Client) string {
+	clientNames := utils.MapSlice(utils.Values(clients), func(client types.Client) string {
 		return client.Name
-	}), data.Name) {
-		writer.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(writer).Encode(map[string]any{
-			"error": "Bad Request",
-			"code":  "VALIDATION_ERROR",
-			"errors": []map[string]any{
-				{
-					"field":   "name",
-					"message": "Name already exist",
-				},
-			},
-		})
-		return
-	}
+	})
 
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(map[string]any{
-		"message": "Register Successfully",
+		"message": "Get All Client Successfully",
+		"data": map[string]any{
+			"clientNames": clientNames,
+		},
 	})
 }
