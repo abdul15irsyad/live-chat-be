@@ -23,6 +23,7 @@ func main() {
 	http.HandleFunc("/register", handlers.RegisterHandler)
 	http.HandleFunc("/clients", handlers.GetAllClientHandler)
 	http.HandleFunc("/ws", handlers.SocketHandler)
+	http.HandleFunc("/", handlers.RootHandler)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "5010"
