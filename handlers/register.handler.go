@@ -11,6 +11,8 @@ type RegisterRequestData struct {
 	Name string `json:"name"`
 }
 
+const MaxMember = 10
+
 func RegisterHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 	if request.Method != http.MethodPost {
@@ -29,11 +31,19 @@ func RegisterHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 	defer request.Body.Close()
 
-	clientNames := utils.MapSlice(utils.Values(clients), func(client types.Client) string {
-		return client.Name
-	})
+	if len(clients) >= MaxMember {
+		writer.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(writer).Encode(map[string]any{
+			"error":   "Bad Request",
+			"code":    "MAX_MEMBER_EXCEED",
+			"message": "Max Member Exceed",
+		})
+		return
+	}
 
-	if utils.Includes(clientNames, data.Name) {
+	if utils.Includes(utils.MapSlice(utils.Values(clients), func(client types.Client) string {
+		return utils.Slugify(client.Name)
+	}), utils.Slugify(data.Name)) {
 		writer.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(writer).Encode(map[string]any{
 			"error": "Bad Request",
@@ -50,6 +60,6 @@ func RegisterHandler(writer http.ResponseWriter, request *http.Request) {
 
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(map[string]any{
-		"message": "Register Successfully",
+		"message": "Register Ok",
 	})
 }
