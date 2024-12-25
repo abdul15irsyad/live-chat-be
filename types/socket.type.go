@@ -17,6 +17,10 @@ type MessageData struct {
 	Message string `json:"message"`
 }
 
+type TypingData struct {
+	Status bool `json:"status"`
+}
+
 type Client struct {
 	Id   uuid.UUID `json:"id"`
 	Name string    `json:"name"`

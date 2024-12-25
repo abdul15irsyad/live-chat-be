@@ -67,12 +67,26 @@ func SocketHandler(writer http.ResponseWriter, request *http.Request) {
 		switch JSONMessage["type"] {
 		case "message":
 			jsonData, _ := json.Marshal(JSONMessage)
-			var message types.Payload[types.MessageData]
-			_ = json.Unmarshal(jsonData, &message)
-			message.Timestamp = time.Now()
-			message.Client = clients[conn]
-			fmt.Printf("%s: %s send \"%s\"\n", message.Timestamp.Format("2006-01-02 15:04:05"), clients[conn].Name, message.Data.Message)
-			services.BroadcastMessage(&message, conn, &clients)
+			var payload types.Payload[types.MessageData]
+			_ = json.Unmarshal(jsonData, &payload)
+			payload.Timestamp = time.Now()
+			payload.Client = clients[conn]
+			fmt.Printf("%s: %s send \"%s\"\n", payload.Timestamp.Format("2006-01-02 15:04:05"), clients[conn].Name, payload.Data.Message)
+			services.BroadcastMessage(&payload, conn, &clients)
+		case "typing":
+			jsonData, _ := json.Marshal(JSONMessage)
+			var payload types.Payload[types.TypingData]
+			_ = json.Unmarshal(jsonData, &payload)
+			payload.Timestamp = time.Now()
+			payload.Client = clients[conn]
+			var typingInfo string
+			if payload.Data.Status {
+				typingInfo = "is start typing"
+			} else {
+				typingInfo = "is stop typing"
+			}
+			fmt.Printf("%s: %s is \"%s\"\n", payload.Timestamp.Format("2006-01-02 15:04:05"), clients[conn].Name, typingInfo)
+			services.BroadcastMessage(&payload, conn, &clients)
 		default:
 			fmt.Printf("type \"%s\" not found\n", JSONMessage["type"])
 		}
